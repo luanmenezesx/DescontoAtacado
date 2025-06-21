@@ -1,6 +1,4 @@
-﻿using System.Security.Cryptography.X509Certificates;
-
-Console.Clear();
+﻿Console.Clear();
 
 
 List<ItemCatalogo> produtos = new List<ItemCatalogo>
@@ -32,44 +30,77 @@ List<VendaProduto> pvd = new List<VendaProduto>
     new VendaProduto() {Id = "3", GTIN = "7896066334509", Quantidade = 2, Valor = 10.38m}
 };
 
-decimal valorSubtotal = pvd.Sum(Item => Item.Valor);
-List<DescontoProduto> ListaDescontos = new List<DescontoProduto>();
-
-var vendasAgrupadas = pvd.GroupBy(item => item.GTIN);
-
-foreach (var grupo in vendasAgrupadas)
+decimal valorSubstotal = 0;
+foreach (var item in pvd)
 {
-    var produto = produtos.FirstOrDefault(p => p.GTIN == grupo.Key);
-    int quantidadeTotal = grupo.Sum(item => item.Quantidade);
+    valorSubstotal += item.Valor;
+}
 
-    if (produto != null &&
-    produto.ValorAtacado.HasValue &&
-    quantidadeTotal >= produto.Unidades)
+List<DescontoProduto> ListaDescontos = new List<DescontoProduto>();
+var vendasAgrupadas = new Dictionary<string, int>();
+
+foreach (var venda in pvd)
+{
+    if (vendasAgrupadas.ContainsKey(venda.GTIN))
     {
-        decimal descontoUnitario = produto.ValorVarejo - produto.ValorAtacado.Value;
-        decimal descontoTotal = descontoUnitario * quantidadeTotal;
-
-        ListaDescontos.Add(new DescontoProduto
-        {
-            GTIN = produto.GTIN,
-            ValorDesconto = descontoTotal
-        });
+        vendasAgrupadas[venda.GTIN] += venda.Quantidade;
+    }
+    else
+    {
+        vendasAgrupadas[venda.GTIN] = venda.Quantidade;
     }
 }
 
-Console.WriteLine("\n--- DESCONTO NO ATACADO ---\n");
-
-Console.WriteLine("Descontos aplicados:");
-foreach (var d in ListaDescontos)
+foreach (var grupo in vendasAgrupadas)
 {
-    Console.WriteLine($"{d.GTIN} => R$ {d.ValorDesconto:F2}");
+    ItemCatalogo produtoEncontrado = null;
+
+    foreach (var prod in produtos)
+    {
+        if (prod.GTIN == grupo.Key)
+        {
+            produtoEncontrado = prod;
+            break;
+        }
+    }
+    if (produtoEncontrado != null && produtoEncontrado.ValorAtacado != null &&
+    grupo.Value >= produtoEncontrado.Unidades)
+    {
+        decimal descontoUnitario = produtoEncontrado.ValorVarejo - produtoEncontrado.ValorAtacado.Value;
+        decimal descontoTotal = descontoUnitario * grupo.Value;
+        ListaDescontos.Add(new DescontoProduto
+        {
+            GTIN = produtoEncontrado.GTIN,
+            ValorDesconto = descontoTotal
+        }); 
+    }
 }
 
-decimal totalDescontos = ListaDescontos.Sum(d => d.ValorDesconto);
-decimal valorTotal = valorSubtotal - totalDescontos;
+Console.WriteLine("Descontos Aplicados: ");
+foreach (var desconto in ListaDescontos)
+{
+    string nomeProduto = "Produto desconhecido";
+    foreach (var prod in produtos)
+    {
+        if (prod.GTIN == desconto.GTIN)
+        {
+            nomeProduto = prod.Descricao;
+            break;
+        }
+    }
+    Console.WriteLine($"{nomeProduto} => R$ {desconto.ValorDesconto:F2}");
+}
+
+decimal totalDescontos = 0;
+foreach (var d in ListaDescontos)
+{
+    totalDescontos += d.ValorDesconto;
+}
+
+decimal valorTotal = valorSubstotal - totalDescontos;
 
 Console.WriteLine();
-Console.WriteLine($"(+) Subtotal = R$ {valorSubtotal:F2}");
+Console.WriteLine($"(+) Subtotal = R$ {valorSubstotal:F2}");
 Console.WriteLine($"(-) Descontos = R$ {totalDescontos:F2}");
 Console.WriteLine($"(=) Total = R$ {valorTotal:F2}");
 
