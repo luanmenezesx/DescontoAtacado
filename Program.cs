@@ -88,7 +88,7 @@ foreach (var desconto in ListaDescontos)
             break;
         }
     }
-    Console.WriteLine($"{nomeProduto} => R$ {desconto.ValorDesconto:F2}");
+    Console.WriteLine($"{desconto.GTIN} => R$ {desconto.ValorDesconto:F2}");
 }
 
 decimal totalDescontos = 0;
